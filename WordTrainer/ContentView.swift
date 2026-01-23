@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 import Charts
 
 enum WordFilter: String, CaseIterable, Identifiable {
@@ -16,26 +17,106 @@ enum WordFilter: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+// Lightweight row view extracted from the complex List row to help the compiler
+private struct WordRow: View {
+    let word: Word
+    let onPractice: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading) {
+                Text(word.native).font(.headline)
+                if word.mastered {
+                    Text(word.foreign)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 6) {
+                Text("⭐️ \(word.score)")
+                    .font(.subheadline)
+
+                if word.mastered {
+                    Label("Mastered", systemImage: "checkmark.seal.fill")
+                        .font(.caption2)
+                        .padding(6)
+                        .background(Color.green.opacity(0.15))
+                        .foregroundColor(.green)
+                        .cornerRadius(8)
+                } else {
+                    Label("To practice", systemImage: "clock")
+                        .font(.caption2)
+                        .padding(6)
+                        .background(Color.blue.opacity(0.12))
+                        .foregroundColor(.blue)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onPractice)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(action: onPractice) {
+                Label("Practice", systemImage: "brain.head.profile")
+            }
+            .tint(.blue)
+
+            Button(action: onEdit) {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(.green)
+
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}
+
 struct ContentView: View {
-    // Simple in-memory store backed by a JSON file
-    @State private var words: [Word] = []
-
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
+    @Query(sort: [SortDescriptor(\Word.createdAt, order: .reverse)]) private var words: [Word]
+    
     @State private var showingAdd = false
     @State private var showingPractice: Word? = nil
     @State private var showingStats = false
     @State private var showingAbout = false
     @State private var editingWord: Word? = nil
-
+    @State private var showingSettings = false
+    // Control NavigationSplitView column visibility so we can programmatically open/close the primary column
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    // Show options as a sheet (works reliably in Canvas)
+    @State private var showingOptionsSheet = false
+    
+    // User-configurable daily target (persisted)
+    @AppStorage("dailyTarget") private var dailyTarget: Int = 10
+    
     // Persist selected filter across launches
     @AppStorage("wordFilter") private var storedFilterRaw: String = WordFilter.all.rawValue
     @State private var filter: WordFilter = .all
-
+    
     // Delete confirmation state
     @State private var showingDeleteConfirmation = false
     @State private var pendingDeleteWords: [Word] = []
-
+    
+    // Computed overall mastered count used for progress bar
+    private var masteredCount: Int { words.filter { $0.mastered }.count }
+    
+    // Computed count of words learned today (mastered and lastCorrectAt is today)
+    private var dailyLearnedCount: Int {
+        let calendar = Calendar.current
+        return words.filter { word in
+            guard let last = word.lastCorrectAt else { return false }
+            return word.mastered && calendar.isDateInToday(last)
+        }.count
+    }
+    
     // Computed filtered words according to the selected filter
     private var filteredWords: [Word] {
         switch filter {
@@ -44,224 +125,207 @@ struct ContentView: View {
         case .mastered: return words.filter { $0.mastered }
         }
     }
-
-    // File URL for persistence
-    private var storageURL: URL {
-        let fm = FileManager.default
-        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return docs.appendingPathComponent("words.json")
-    }
-
+    
+    // Reduce complexity in DEBUG so previews compile fast. Replace with a simple stub.
     var body: some View {
-        NavigationSplitView {
-            List {
-                // Dynamic section title based on filter
-                let sectionTitle = (filter == .all) ? "All Words" : filter.rawValue
-
-                Section(header: Text(sectionTitle)) {
-                    ForEach(filteredWords) { word in
-                        HStack(alignment: .center) {
-                            VStack(alignment: .leading) {
-                                Text(word.native).font(.headline)
-                                Text(word.foreign).font(.subheadline).foregroundColor(.secondary)
+        VStack(spacing: 0) {
+            NavigationSplitView(columnVisibility: $columnVisibility) {
+                List {
+                    // Dynamic section title based on filter
+                    let sectionTitle = (filter == .all) ? "All Words" : filter.rawValue
+                    
+                    Section(header: Text(sectionTitle)) {
+                        ForEach(filteredWords) { word in
+                            WordRow(
+                                word: word,
+                                onPractice: { showingPractice = word },
+                                onEdit: { editingWord = word },
+                                onDelete: {
+                                    pendingDeleteWords = [word]
+                                    showingDeleteConfirmation = true
+                                }
+                            )
+                        }
+                        .onDelete(perform: delete)
+                    }
+                    
+                    // Keep summary sections for quick overview when "All" is selected
+                    if filter == .all {
+                        Section(header: Text("Mastered")) {
+                            ForEach(words.filter { $0.mastered }) { word in
+                                HStack { Text(word.native); Spacer(); Text("\(word.score)") }
                             }
-
-                            Spacer()
-
-                            VStack(alignment: .trailing, spacing: 6) {
-                                // Score
-                                Text("⭐️ \(word.score)")
-                                    .font(.subheadline)
-
-                                // Mastered badge
-                                if word.mastered {
-                                    Label("Mastered", systemImage: "checkmark.seal.fill")
-                                        .font(.caption2)
-                                        .padding(6)
-                                        .background(Color.green.opacity(0.15))
-                                        .foregroundColor(.green)
-                                        .cornerRadius(8)
-                                } else {
-                                    Label("To practice", systemImage: "clock")
-                                        .font(.caption2)
-                                        .padding(6)
-                                        .background(Color.blue.opacity(0.12))
-                                        .foregroundColor(.blue)
-                                        .cornerRadius(8)
+                        }
+                        
+                        Section(header: Text("To Learn")) {
+                            ForEach(words.filter { !$0.mastered }) { word in
+                                HStack { Text(word.native); Spacer(); Text("\(word.score)") }
+                            }
+                        }
+                    }
+                }
+            } detail: {
+                // Place detail content in a ZStack so gestures still work; the Options button will be moved to an overlay on the split view
+                ZStack {
+                    Group {
+                        if let practice = showingPractice {
+                            PracticeView(word: practice)
+                        } else {
+                            Text("Select a word to practice")
+                                .font(.largeTitle)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    // Use simultaneousGesture so overlay button taps are delivered in Canvas/Simulator
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 20)
+                            .onEnded { value in
+                                // Swipe right to reveal primary column, swipe left to hide
+                                let horizontal = value.translation.width
+                                let vertical = value.translation.height
+                                if horizontal > 80 && abs(vertical) < 60 {
+                                    columnVisibility = .all
+                                } else if horizontal < -80 && abs(vertical) < 60 {
+                                    columnVisibility = .detailOnly
                                 }
                             }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { showingPractice = word }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button { showingPractice = word } label: {
-                                Label("Practice", systemImage: "brain.head.profile")
-                            }
-                            .tint(.blue)
-
-                            Button { editingWord = word } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.green)
-
-                            // Use confirmation flow for deletes
-                            Button(role: .destructive) {
-                                pendingDeleteWords = [word]
-                                showingDeleteConfirmation = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
-                    .onDelete(perform: delete)
+                    )
                 }
-
-                // Keep summary sections for quick overview when "All" is selected
-                if filter == .all {
-                    Section(header: Text("Mastered")) {
-                        ForEach(words.filter { $0.mastered }) { word in
-                            HStack { Text(word.native); Spacer(); Text("\(word.score)") }
-                        }
-                    }
-
-                    Section(header: Text("To Learn")) {
-                        ForEach(words.filter { !$0.mastered }) { word in
-                            HStack { Text(word.native); Spacer(); Text("\(word.score)") }
-                        }
-                    }
+            }
+            // Small overlay Options button placed on the split view so it's visible above nav chrome
+            .overlay(alignment: .topLeading) {
+                Button(action: { showingOptionsSheet = true }) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .padding(10)
+                        .background(.thinMaterial)
+                        .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
+                .padding([.top, .leading], 12)
+                .contentShape(Rectangle())
+                .padding(6)
+                .shadow(color: Color.black.opacity(0.12), radius: 2, x: 0, y: 1)
+                .accessibilityLabel("Options")
+                .zIndex(100)
+                .allowsHitTesting(true)
             }
             .navigationTitle("Word Trainer")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showingAdd = true } label: { Image(systemName: "plus") }
-                }
-
-                // Menu for filter, charts and about
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Menu {
-                        Picker("Filter", selection: $filter) {
-                            ForEach(WordFilter.allCases) { f in
-                                Text(f.rawValue).tag(f)
-                            }
-                        }
-
-                        Divider()
-
-                        Button { showingStats = true } label: {
-                            Label("Charts", systemImage: "chart.bar")
-                        }
-
-                        Button { showingAbout = true } label: {
-                            Label("About", systemImage: "info.circle")
-                        }
-                    } label: {
-                        Label("Options", systemImage: "ellipsis.circle")
-                    }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { if let random = filteredWords.randomElement() { showingPractice = random } } label: {
-                        Label("Practice Random", systemImage: "shuffle")
-                    }
-                }
+            // Present Options sheet from the outer container so it works regardless of split visibility
+            .sheet(isPresented: $showingOptionsSheet) {
+                OptionsSheet(isPresented: $showingOptionsSheet, filter: $filter, showStats: { showingStats = true }, showAbout: { showingAbout = true }, showSettings: { showingSettings = true })
             }
-            // Delete confirmation alert
-            .alert("Delete Word", isPresented: $showingDeleteConfirmation, actions: {
-                Button("Delete", role: .destructive) { performConfirmedDeletion() }
-                Button("Cancel", role: .cancel) { pendingDeleteWords = [] }
-            }, message: {
-                if pendingDeleteWords.count == 1 {
-                    Text("Are you sure you want to delete ‘\(pendingDeleteWords.first?.native ?? "this word")’? This cannot be undone.")
-                } else {
-                    Text("Are you sure you want to delete \(pendingDeleteWords.count) words? This cannot be undone.")
-                }
-            })
-            // Keep toolbar and list modifiers above
-        } detail: {
-            if let practice = showingPractice {
-                PracticeView(word: practice) { updated in
-                    if let idx = words.firstIndex(where: { $0.id == updated.id }) { words[idx] = updated; saveWords() }
-                }
-            } else {
-                Text("Select a word to practice")
-                    .font(.largeTitle)
+             .toolbar {
+                 // Minimal toolbar: Add (+) and Practice Random (shuffle)
+                 ToolbarItem(placement: .navigationBarTrailing) {
+                     Button { showingAdd = true } label: { Image(systemName: "plus") }
+                 }
+                 
+                 ToolbarItem(placement: .navigationBarTrailing) {
+                     Button {
+                         if let random = filteredWords.randomElement() {
+                             showingPractice = random
+                         }
+                     } label: {
+                         Image(systemName: "shuffle")
+                     }
+                 }
+             }
+             // Delete confirmation alert
+             .alert("Delete Word", isPresented: $showingDeleteConfirmation, actions: {
+                 Button("Delete", role: .destructive) { performConfirmedDeletion() }
+                 Button("Cancel", role: .cancel) { pendingDeleteWords = [] }
+             }, message: {
+                 if pendingDeleteWords.count == 1 {
+                     Text("Are you sure you want to delete ‘\(pendingDeleteWords.first?.native ?? "this word")’? This cannot be undone.")
+                 } else {
+                     Text("Are you sure you want to delete \(pendingDeleteWords.count) words? This cannot be undone.")
+                 }
+             })
+            
+            // small progress bar fixed below the split view: overall mastered % and today's progress toward the daily target
+            Divider()
+            HStack(spacing: 12) {
+                // Overall mastered percentage
+                Text("Learned")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-            }
-        }
-        .onAppear {
-            // sync persisted filter
-            filter = WordFilter(rawValue: storedFilterRaw) ?? .all
-            loadWords()
-        }
-        .onChange(of: filter) { new in
-            storedFilterRaw = new.rawValue
-        }
-        .sheet(isPresented: $showingAdd) {
-            AddWordView { native, foreign in
-                if !native.isEmpty && !foreign.isEmpty { addWord(native: native, foreign: foreign) }
-                showingAdd = false
-            }
-            .presentationDetents([.medium, .large])
-        }
-        // On compact devices (iPhone) present the practice screen modally
-        .sheet(isPresented: Binding(get: { showingPractice != nil && horizontalSizeClass == .compact }, set: { if !$0 { showingPractice = nil } })) {
-            if let practice = showingPractice {
-                PracticeView(word: practice) { updated in
-                    if let idx = words.firstIndex(where: { $0.id == updated.id }) { words[idx] = updated; saveWords() }
-                    showingPractice = nil
+                
+                let total = max(1, Double(words.count))
+                ProgressView(value: Double(masteredCount), total: total)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .green))
+                    .frame(height: 8)
+                
+                // percentage label
+                Text(String(format: "%d%%", Int((Double(masteredCount) / total) * 100.0)))
+                    .font(.caption2).foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Today's progress: a compact bar and numeric "Today: X / target"
+                VStack(alignment: .trailing, spacing: 4) {
+                    ProgressView(value: Double(dailyLearnedCount), total: Double(max(1, dailyTarget)))
+                        .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                        .frame(width: 110, height: 6)
+                    
+                    Text("Today: \(dailyLearnedCount)/\(dailyTarget)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
             }
-        }
-        // Edit sheet
-        .sheet(item: $editingWord) { word in
-            EditWordView(word: word) { updated in
-                if let idx = words.firstIndex(where: { $0.id == updated.id }) { words[idx] = updated; saveWords() }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .onAppear {
+                // sync persisted filter
+                filter = WordFilter(rawValue: storedFilterRaw) ?? .all
             }
-            .presentationDetents([.medium, .large])
-        }
-        // Stats sheet
-        .sheet(isPresented: $showingStats) {
-            NavigationStack { StatsView(words: words) }
-        }
-        // About sheet
-        .sheet(isPresented: $showingAbout) {
-            AboutView()
-        }
-    }
-
-    // MARK: - Persistence
-    private func loadWords() {
-        do {
-            let data = try Data(contentsOf: storageURL)
-            let decoded = try JSONDecoder().decode([Word].self, from: data)
-            words = decoded
-        } catch {
-            // If file doesn't exist or decode fails, start with sample data
-            if words.isEmpty {
-                words = sampleWords()
+            .onChange(of: filter) {
+                storedFilterRaw = filter.rawValue
+            }
+            .sheet(isPresented: $showingAdd) {
+                AddWordView { native, foreign in
+                    if !native.isEmpty && !foreign.isEmpty { addWord(native: native, foreign: foreign) }
+                    showingAdd = false
+                }
+                .presentationDetents([.medium, .large])
+            }
+            // On compact devices (iPhone) present the practice screen modally
+            .sheet(isPresented: Binding(get: { showingPractice != nil && horizontalSizeClass == .compact }, set: { if !$0 { showingPractice = nil } })) {
+                if let practice = showingPractice {
+                    PracticeView(word: practice)
+                }
+            }
+            // Edit sheet
+            .sheet(item: $editingWord) { word in
+                EditWordView(word: word)
+                    .presentationDetents([.medium, .large])
+            }
+            // Stats sheet
+            .sheet(isPresented: $showingStats) {
+                NavigationStack { StatsView(words: words) }
+            }
+            // About sheet
+            .sheet(isPresented: $showingAbout) {
+                AboutView()
+            }
+            // Settings sheet
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(dailyTarget: $dailyTarget)
             }
         }
     }
-
-    private func saveWords() {
-        do {
-            let data = try JSONEncoder().encode(words)
-            try data.write(to: storageURL, options: [.atomic])
-        } catch {
-            print("Failed to save words: \(error)")
-        }
-    }
-
-    // MARK: - Actions
+    
     private func addWord(native: String, foreign: String) {
         withAnimation {
             let w = Word(native: native, foreign: foreign)
-            words.insert(w, at: 0)
-            saveWords()
+            modelContext.insert(w)
+            try? modelContext.save()
         }
     }
-
+    
     private func delete(offsets: IndexSet) {
         // Map offsets from filteredWords into real Word instances and ask for confirmation
         let wordsToDelete = offsets.compactMap { idx -> Word? in
@@ -273,277 +337,21 @@ struct ContentView: View {
             showingDeleteConfirmation = true
         }
     }
-
+    
     private func performConfirmedDeletion() {
         withAnimation {
-            let ids = Set(pendingDeleteWords.map { $0.id })
-            words.removeAll(where: { ids.contains($0.id) })
-            saveWords()
+            for w in pendingDeleteWords {
+                modelContext.delete(w)
+            }
+            try? modelContext.save()
             pendingDeleteWords = []
             showingDeleteConfirmation = false
         }
     }
-
-    // Sample data for first run / previews
-    private func sampleWords() -> [Word] {
-        return [
-            Word(native: "House", foreign: "Maison", score: 3, createdAt: Calendar.current.date(byAdding: .month, value: -2, to: Date())!),
-            Word(native: "Apple", foreign: "Pomme", score: 5, createdAt: Calendar.current.date(byAdding: .month, value: -1, to: Date())!),
-            Word(native: "Car", foreign: "Voiture", score: 1, createdAt: Calendar.current.date(byAdding: .day, value: -10, to: Date())!),
-            Word(native: "Book", foreign: "Livre", score: 6, createdAt: Calendar.current.date(byAdding: .month, value: -3, to: Date())!),
-            Word(native: "Water", foreign: "Eau", score: 0, createdAt: Date())
-        ]
-    }
 }
 
-// MARK: - AddWordView
-struct AddWordView: View {
-    @State private var native = ""
-    @State private var foreign = ""
-    var onSave: (String, String) -> Void
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Native (e.g. English)", text: $native)
-                TextField("Foreign (e.g. Spanish)", text: $foreign)
-            }
-            .navigationTitle("Add Word")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(native.trimmingCharacters(in: .whitespaces), foreign.trimmingCharacters(in: .whitespaces)) }
-                        .disabled(native.trimmingCharacters(in: .whitespaces).isEmpty || foreign.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { onSave("", "") }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - EditWordView (uses onSave callback)
-struct EditWordView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var word: Word
-    var onSave: (Word) -> Void
-
-    @State private var native: String
-    @State private var foreign: String
-    @State private var scoreString: String
-    @State private var mastered: Bool
-
-    init(word: Word, onSave: @escaping (Word) -> Void) {
-        self.word = word
-        self.onSave = onSave
-        _native = State(initialValue: word.native)
-        _foreign = State(initialValue: word.foreign)
-        _scoreString = State(initialValue: String(word.score))
-        _mastered = State(initialValue: word.mastered)
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                TextField("Native", text: $native)
-                TextField("Foreign", text: $foreign)
-                HStack {
-                    TextField("Score", text: $scoreString)
-                        .keyboardType(.numberPad)
-                    Stepper("", value: Binding(get: {
-                        Int(scoreString) ?? word.score
-                    }, set: { new in
-                        scoreString = String(new)
-                    }), in: 0...999)
-                    .labelsHidden()
-                }
-                Toggle("Mastered", isOn: $mastered)
-            }
-            .navigationTitle("Edit Word")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        applyChanges()
-                        dismiss()
-                    }
-                    .disabled(native.trimmingCharacters(in: .whitespaces).isEmpty || foreign.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-        }
-    }
-
-    private func applyChanges() {
-        var updated = word
-        updated.native = native.trimmingCharacters(in: .whitespacesAndNewlines)
-        updated.foreign = foreign.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let s = Int(scoreString) { updated.score = max(0, s) }
-        updated.mastered = mastered
-        updated.lastCorrectAt = updated.lastCorrectAt
-        onSave(updated)
-    }
-}
-
-// MARK: - PracticeView (uses onUpdate callback)
-struct PracticeView: View {
-    var word: Word
-    var onUpdate: (Word) -> Void
-
-    @State private var answer = ""
-    @State private var feedback: String? = nil
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Translate to foreign:")
-            Text(word.native).font(.largeTitle)
-            TextField("Type the word...", text: $answer)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal)
-                .onSubmit(check)
-
-            if let feedback {
-                Text(feedback).font(.headline).foregroundColor(feedback == "Correct" ? .green : .red)
-            }
-
-            Button("Check") { check() }
-                .buttonStyle(.borderedProminent)
-
-            Spacer()
-        }
-        .padding()
-        .navigationTitle(word.native)
-    }
-
-    func check() {
-        var updated = word
-        let trimmed = answer.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { feedback = "Please type an answer"; return }
-
-        if trimmed.lowercased() == word.foreign.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-            feedback = "Correct"
-            updated.score += 1
-            updated.lastCorrectAt = Date()
-            onUpdate(updated)
-        } else {
-            feedback = "Wrong — expected: \(word.foreign)"
-            updated.score = max(0, updated.score - 1)
-            onUpdate(updated)
-        }
-    }
-}
-
-// MARK: - StatsView
-struct StatsView: View {
-    var words: [Word]
-
-    // Aggregate counts per month (using createdAt if lastCorrectAt is nil)
-    private var learnedPerMonth: [String: Int] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        let entries = words.map { word -> String in
-            let date = word.lastCorrectAt ?? word.createdAt
-            return formatter.string(from: date)
-        }
-        return Dictionary(grouping: entries, by: { $0 }).mapValues { $0.count }
-    }
-
-    // helper array sorted by month string
-    private var learnedPerMonthArray: [(month: String, count: Int)] {
-        learnedPerMonth.keys.sorted().map { ($0, learnedPerMonth[$0] ?? 0) }
-    }
-
-    private var masteredCount: Int { words.filter { $0.mastered }.count }
-    private var toLearnCount: Int { words.count - masteredCount }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Summary").font(.title2).padding(.horizontal)
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Total words"); Text("\(words.count)").font(.headline)
-                    }
-                    Spacer()
-                    VStack(alignment: .leading) {
-                        Text("Mastered"); Text("\(masteredCount)").font(.headline)
-                    }
-                    Spacer()
-                    VStack(alignment: .leading) {
-                        Text("To learn"); Text("\(toLearnCount)").font(.headline)
-                    }
-                }
-                .padding(.horizontal)
-
-                // Bar chart: Learned per month
-                if !learnedPerMonthArray.isEmpty {
-                    Text("Learned per month").font(.headline).padding(.horizontal)
-                    Chart {
-                        ForEach(learnedPerMonthArray, id: \.month) { entry in
-                            BarMark(
-                                x: .value("Month", entry.month),
-                                y: .value("Count", entry.count)
-                            )
-                        }
-                    }
-                    .chartYAxisLabel("Words")
-                    .frame(height: 240)
-                    .padding(.horizontal)
-                }
-
-                // Donut chart: mastered vs to learn
-                Text("Progress").font(.headline).padding(.horizontal)
-                Chart {
-                    let progress = [("Mastered", masteredCount), ("To Learn", toLearnCount)]
-                    ForEach(Array(progress.enumerated()), id: \.element.0) { _, element in
-                        let (label, count) = element
-                        SectorMark(
-                            angle: .value("Count", count),
-                            innerRadius: .ratio(0.5),
-                            outerRadius: .ratio(0.9)
-                        )
-                        .foregroundStyle(label == "Mastered" ? .green : .blue)
-                        .annotation(position: .overlay) {
-                            Text(label).font(.caption)
-                        }
-                    }
-                }
-                .frame(height: 200)
-                .padding(.horizontal)
-
-                Spacer()
-            }
-            .padding(.vertical)
-        }
-        .navigationTitle("Stats")
-    }
-}
-
-// MARK: - AboutView
-struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Word Trainer").font(.title)
-                Text("Version 1.0")
-                Text("\nA simple app to practice foreign words.\n\nCreated by Cyril Wendl.")
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("About")
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }
-    }
-}
-
-// MARK: - Preview & Dummy Data
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    let (container, words) = makePreviewData()
+    ContentView()
+        .modelContainer(container)
 }

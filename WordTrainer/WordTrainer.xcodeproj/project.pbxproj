@@ -9,19 +9,33 @@
 /* Begin PBXBuildFile section */
 		D634DECB2F23F265000F9CE8 /* WordTrainerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D634DECA2F23F265000F9CE8 /* WordTrainerApp.swift */; };
 		D634DECD2F23F265000F9CE8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D634DECC2F23F265000F9CE8 /* ContentView.swift */; };
-		D634DECF2F23F265000F9CE8 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = D634DECE2F23F265000F9CE8 /* Item.swift */; };
 		D634DED12F23F266000F9CE8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D634DED02F23F266000F9CE8 /* Assets.xcassets */; };
 		D66C56662F23FABB00C08C23 /* Word.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56612F23FABB00C08C23 /* Word.swift */; };
+		D66C566D2F240B9600C08C23 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C566B2F240B9600C08C23 /* SettingsView.swift */; };
+		D66C566E2F240B9600C08C23 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C566C2F240B9600C08C23 /* StatsView.swift */; };
+		D66C566F2F240B9600C08C23 /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C566A2F240B9600C08C23 /* PracticeView.swift */; };
+		D66C56702F240B9600C08C23 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56672F240B9600C08C23 /* AboutView.swift */; };
+		D66C56712F240B9600C08C23 /* AddWordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56682F240B9600C08C23 /* AddWordView.swift */; };
+		D66C56722F240B9600C08C23 /* EditWordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56692F240B9600C08C23 /* EditWordView.swift */; };
+		D66C56742F240C7E00C08C23 /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56732F240C7E00C08C23 /* PreviewData.swift */; };
+		D66C567A2F241D9F00C08C23 /* OptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56792F241D9F00C08C23 /* OptionsSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		D634DECA2F23F265000F9CE8 /* WordTrainerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordTrainerApp.swift; sourceTree = "<group>"; };
 		D634DECC2F23F265000F9CE8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		D634DECE2F23F265000F9CE8 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 		D634DED02F23F266000F9CE8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D66C56602F23FAA500C08C23 /* WordTrainer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordTrainer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D66C56612F23FABB00C08C23 /* Word.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Word.swift; sourceTree = "<group>"; };
 		D66C56632F23FABB00C08C23 /* WordTrainer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = WordTrainer.xcodeproj; sourceTree = "<group>"; };
+		D66C56672F240B9600C08C23 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		D66C56682F240B9600C08C23 /* AddWordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddWordView.swift; sourceTree = "<group>"; };
+		D66C56692F240B9600C08C23 /* EditWordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditWordView.swift; sourceTree = "<group>"; };
+		D66C566A2F240B9600C08C23 /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
+		D66C566B2F240B9600C08C23 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D66C566C2F240B9600C08C23 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
+		D66C56732F240C7E00C08C23 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
+		D66C56792F241D9F00C08C23 /* OptionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,11 +52,18 @@
 		D634DEBE2F23F265000F9CE8 = {
 			isa = PBXGroup;
 			children = (
+				D66C56792F241D9F00C08C23 /* OptionsSheet.swift */,
+				D66C56732F240C7E00C08C23 /* PreviewData.swift */,
+				D66C56672F240B9600C08C23 /* AboutView.swift */,
+				D66C56682F240B9600C08C23 /* AddWordView.swift */,
+				D66C56692F240B9600C08C23 /* EditWordView.swift */,
+				D66C566A2F240B9600C08C23 /* PracticeView.swift */,
+				D66C566B2F240B9600C08C23 /* SettingsView.swift */,
+				D66C566C2F240B9600C08C23 /* StatsView.swift */,
 				D66C56612F23FABB00C08C23 /* Word.swift */,
 				D66C56632F23FABB00C08C23 /* WordTrainer.xcodeproj */,
 				D634DED02F23F266000F9CE8 /* Assets.xcassets */,
 				D634DECC2F23F265000F9CE8 /* ContentView.swift */,
-				D634DECE2F23F265000F9CE8 /* Item.swift */,
 				D634DECA2F23F265000F9CE8 /* WordTrainerApp.swift */,
 				D66C56602F23FAA500C08C23 /* WordTrainer.app */,
 			);
@@ -120,9 +141,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D66C566D2F240B9600C08C23 /* SettingsView.swift in Sources */,
+				D66C566E2F240B9600C08C23 /* StatsView.swift in Sources */,
+				D66C566F2F240B9600C08C23 /* PracticeView.swift in Sources */,
+				D66C56742F240C7E00C08C23 /* PreviewData.swift in Sources */,
+				D66C56702F240B9600C08C23 /* AboutView.swift in Sources */,
+				D66C567A2F241D9F00C08C23 /* OptionsSheet.swift in Sources */,
+				D66C56712F240B9600C08C23 /* AddWordView.swift in Sources */,
+				D66C56722F240B9600C08C23 /* EditWordView.swift in Sources */,
 				D634DECD2F23F265000F9CE8 /* ContentView.swift in Sources */,
 				D66C56662F23FABB00C08C23 /* Word.swift in Sources */,
-				D634DECF2F23F265000F9CE8 /* Item.swift in Sources */,
 				D634DECB2F23F265000F9CE8 /* WordTrainerApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
