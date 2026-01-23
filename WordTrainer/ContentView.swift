@@ -28,11 +28,9 @@ private struct WordRow: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading) {
                 Text(word.native).font(.headline)
-                if word.mastered {
-                    Text(word.foreign)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+                Text(word.foreign)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
 
             Spacer()
@@ -212,6 +210,22 @@ struct ContentView: View {
                 .accessibilityLabel("Options")
                 .zIndex(100)
                 .allowsHitTesting(true)
+            }
+            // Floating Add button in bottom-right for quick access
+            .overlay(alignment: .bottomTrailing) {
+                Button(action: { showingAdd = true }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(14)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                        .shadow(color: Color.black.opacity(0.15), radius: 4, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
+                .padding([.bottom, .trailing], 16)
+                .accessibilityLabel("Add Word")
+                .zIndex(200)
             }
             .navigationTitle("Word Trainer")
             // Present Options sheet from the outer container so it works regardless of split visibility
