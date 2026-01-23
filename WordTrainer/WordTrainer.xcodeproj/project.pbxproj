@@ -19,6 +19,7 @@
 		D66C56722F240B9600C08C23 /* EditWordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56692F240B9600C08C23 /* EditWordView.swift */; };
 		D66C56742F240C7E00C08C23 /* PreviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56732F240C7E00C08C23 /* PreviewData.swift */; };
 		D66C567A2F241D9F00C08C23 /* OptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C56792F241D9F00C08C23 /* OptionsSheet.swift */; };
+		D66C567C2F24201600C08C23 /* PagedMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66C567B2F24201600C08C23 /* PagedMenuView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		D66C566C2F240B9600C08C23 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		D66C56732F240C7E00C08C23 /* PreviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewData.swift; sourceTree = "<group>"; };
 		D66C56792F241D9F00C08C23 /* OptionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsSheet.swift; sourceTree = "<group>"; };
+		D66C567B2F24201600C08C23 /* PagedMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PagedMenuView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +54,7 @@
 		D634DEBE2F23F265000F9CE8 = {
 			isa = PBXGroup;
 			children = (
+				D66C567B2F24201600C08C23 /* PagedMenuView.swift */,
 				D66C56792F241D9F00C08C23 /* OptionsSheet.swift */,
 				D66C56732F240C7E00C08C23 /* PreviewData.swift */,
 				D66C56672F240B9600C08C23 /* AboutView.swift */,
@@ -144,6 +147,7 @@
 				D66C566D2F240B9600C08C23 /* SettingsView.swift in Sources */,
 				D66C566E2F240B9600C08C23 /* StatsView.swift in Sources */,
 				D66C566F2F240B9600C08C23 /* PracticeView.swift in Sources */,
+				D66C567C2F24201600C08C23 /* PagedMenuView.swift in Sources */,
 				D66C56742F240C7E00C08C23 /* PreviewData.swift in Sources */,
 				D66C56702F240B9600C08C23 /* AboutView.swift in Sources */,
 				D66C567A2F241D9F00C08C23 /* OptionsSheet.swift in Sources */,

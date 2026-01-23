@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
@@ -23,9 +22,7 @@ struct AboutView: View {
 #if DEBUG
 struct AboutView_Previews: PreviewProvider {
     static var previews: some View {
-        let (container, _) = makePreviewData()
         AboutView()
-            .modelContainer(container)
             .previewLayout(.sizeThatFits)
             .padding()
     }
