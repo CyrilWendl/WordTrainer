@@ -364,8 +364,10 @@ struct ContentView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     let (container, words) = makePreviewData()
     ContentView()
         .modelContainer(container)
 }
+#endif
